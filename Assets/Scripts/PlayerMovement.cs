@@ -6,7 +6,8 @@ public class PlayerMovement : MonoBehaviour
     public float speed = 5f;
 
     private Animator animator;
-    private Vector2 moveDir;
+    [HideInInspector]
+    public Vector2 moveDir;
     private Vector2 lastMoveDir = new Vector2(0f, -1f);
 
     void Awake()
