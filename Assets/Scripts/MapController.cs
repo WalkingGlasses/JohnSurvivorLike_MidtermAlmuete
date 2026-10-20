@@ -1,44 +1,110 @@
+
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 
 public class MapController : MonoBehaviour
 {
+    [Header("Terrain Prefabs")]
     public List<GameObject> terrainChunks;
+
+    [Header("Player")]
     public GameObject player;
-    public float checkerRadius;
-    Vector3 noTerrainPosition;//direction where there ISNT a chunk
-    public LayerMask terrainMask;
-    private PlayerMovement pm;
-    //public float terrainDistance = 20;//used to check distance between player and chunk to add next chunk
-    
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        pm = FindObjectOfType<PlayerMovement>();
-    }
 
-    // Update is called once per frame
-    void Update()
+    [Header("Chunk Settings")]
+    public Vector2 chunkSize = new Vector2(20f, 20f);
+
+    [Min(1)]
+    public int chunksAroundPlayer = 1;
+
+    [Header("Generation")]
+    public bool generateStartingArea = true;
+
+    private HashSet<Vector2Int> generatedChunks =
+        new HashSet<Vector2Int>();
+
+    private void Start()
     {
-        ChunkChecker();
-    }
-    
-    void ChunkChecker()
-    {
-        /*if (pm.moveDir.x > 0 &&  pm.moveDir.y == 0)//chunk checker going right
+        if (player == null)
         {
-            if(!Physics2D.OverlapCircle(player.transform.position + new Vector3(20, 0, 0), checkerRadius, terrainMask)) 
-                noTerrainPosition = player.transform.position + new Vector3(20, 0, 0);
-                SpawnChunk();
-            
-        }*/
-        
+            Debug.LogError("MapController: Assign the Player.");
+            enabled = false;
+            return;
+        }
+
+        if (terrainChunks == null || terrainChunks.Count == 0)
+        {
+            Debug.LogError("MapController: Add terrain prefabs.");
+            enabled = false;
+            return;
+        }
+
+        if (chunkSize.x <= 0f || chunkSize.y <= 0f)
+        {
+            Debug.LogError("Chunk size must be greater than zero.");
+            enabled = false;
+            return;
+        }
+
+        if (generateStartingArea)//extra option in case lang since may starting area na yeah?
+        {
+            CheckChunks();
+        }
     }
 
-    void SpawnChunk()
+    private void Update()
     {
-        int rand = Random. Range(0, terrainChunks .Count) ;
-        Instantiate(terrainChunks[rand], noTerrainPosition, Quaternion. identity);
+        CheckChunks();
+    }
+
+    private void CheckChunks()
+    {
+        Vector3 playerPosition = player.transform.position;
+
+        //finds cell closest to layer pos
+        Vector2Int playerChunk = new Vector2Int(
+            Mathf.RoundToInt(playerPosition.x / chunkSize.x),
+            Mathf.RoundToInt(playerPosition.y / chunkSize.y)
+        );
+
+        //checks surrounding cells including DIAGNUL
+        for (int x = -chunksAroundPlayer;
+             x <= chunksAroundPlayer; x++)
+        {
+            for (int y = -chunksAroundPlayer;
+                 y <= chunksAroundPlayer; y++)
+            {
+                Vector2Int chunkCoordinate = new Vector2Int(
+                    playerChunk.x + x,
+                    playerChunk.y + y
+                );
+
+                if (!generatedChunks.Contains(chunkCoordinate))
+                {
+                    SpawnChunk(chunkCoordinate);
+                }
+            }
+        }
+    }
+
+    private void SpawnChunk(Vector2Int coordinate)
+    {
+        int randomIndex = Random.Range(0, terrainChunks.Count);
+
+        Vector3 spawnPosition = new Vector3(
+            coordinate.x * chunkSize.x,
+            coordinate.y * chunkSize.y,
+            0f
+        );
+
+        GameObject newChunk = Instantiate(
+            terrainChunks[randomIndex],
+            spawnPosition,
+            Quaternion.identity
+        );
+
+        newChunk.name = "Terrain Chunk " + coordinate;
+
+        // records the cell chunk thingy so it doesnt respawn on it self again
+        generatedChunks.Add(coordinate);
     }
 }
